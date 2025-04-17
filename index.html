@@ -9,6 +9,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background-color: #F8F8F8;
+            color: #4D4D4D;
         }
         .message {
             max-width: 80%;
@@ -16,25 +18,32 @@
             padding: 0.75rem 1rem;
             border-radius: 1.25rem;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            opacity: 0;
+            transform: translateY(10px);
+            animation: messageAppear 0.3s ease-out forwards;
+            border: 1px solid #DDDDDD;
         }
         .user-message {
-            background-color: #e0f7fa;
-            color: #00897b;
+            background-color: #FFFFFF;
+            color: #4D4D4D;
             margin-left: auto;
+            border: 1px solid #009688;
         }
         .bot-message {
-            background-color: #f3e5f5;
-            color: #5e35b1;
+            background-color: #FFFFFF;
+            color: #4D4D4D;
             margin-right: auto;
+            border: 1px solid #9C27B0;
         }
         .input-container {
             display: flex;
             align-items: center;
             padding: 0.5rem;
             border-radius: 1.5rem;
-            background-color: #fff;
+            background-color: #FFFFFF;
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             margin-top: 1rem;
+            border: 1px solid #DDDDDD;
         }
         .input-field {
             flex: 1;
@@ -44,138 +53,320 @@
             margin-right: 0.5rem;
             font-size: 1rem;
             outline: none;
-            background-color: #f5f5f5;
+            background-color: #F8F8F8;
+            resize: none;
+            min-height: 50px;
+            max-height: 150px;
+            color: #4D4D4D;
+        }
+        .input-field:focus {
+            background-color: #FFFFFF;
+            box-shadow: 0 0 0 2px rgba(0, 150, 136, 0.2);
         }
         .send-button {
             border: none;
             padding: 0.75rem 1.5rem;
             border-radius: 0.75rem;
-            background-color: #4CAF50;
+            background-color: #009688;
             color: white;
             font-size: 1rem;
             cursor: pointer;
             transition: background-color 0.3s ease;
         }
         .send-button:hover {
-            background-color: #45a049;
+            background-color: #00796B;
+        }
+        .send-button:disabled {
+            background-color: #B2DFDB;
+            cursor: not-allowed;
         }
         .chat-container {
             overflow-y: auto;
             max-height: 80vh;
             padding-bottom: 7rem;
+            background-color: #F8F8F8;
+        }
+        .typing-indicator {
+            display: flex;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1rem;
+            margin-right: auto;
+        }
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #9C27B0;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typingAnimation 1.4s infinite ease-in-out;
+        }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        
+        @keyframes typingAnimation {
+            0%, 60%, 100% { transform: translateY(0); }
+            30% { transform: translateY(-5px); }
+        }
+        
+        @keyframes messageAppear {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .quick-reply {
+            display: inline-block;
+            margin: 0.25rem;
+            padding: 0.5rem 1rem;
+            background-color: #E0F2F1;
+            border-radius: 1rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            color: #00796B;
+            border: 1px solid #B2DFDB;
+        }
+        .quick-reply:hover {
+            background-color: #B2DFDB;
+            color: #004D40;
+        }
+        .header-gradient {
+            background: linear-gradient(135deg, #009688 0%, #9C27B0 100%);
+        }
+        .timestamp {
+            color: #AAAAAA;
         }
     </style>
 </head>
-<body class="bg-gray-100 flex justify-center items-center min-h-screen p-4">
-    <div class="bg-white rounded-3xl shadow-2xl flex flex-col w-full max-w-md">
-        <div class="bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-t-3xl text-center">
-            <h1 class="text-2xl font-semibold">AI Chatbot</h1>
+<body class="flex justify-center items-center min-h-screen p-4">
+    <div class="bg-white rounded-3xl shadow-2xl flex flex-col w-full max-w-md overflow-hidden">
+        <div class="header-gradient text-white p-4 rounded-t-3xl text-center">
+            <h1 class="text-2xl font-semibold">Social Media Marketing Assistant</h1>
         </div>
         <div id="chat-container" class="chat-container p-4 flex-grow">
         </div>
         <div class="input-container p-4 rounded-b-3xl">
-            <input type="text" id="message-input" class="input-field" placeholder="Type your message...">
-            <button id="send-button" class="send-button">Invia</button>
+            <textarea id="message-input" class="input-field" placeholder="Type your message..." rows="1"></textarea>
+            <button id="send-button" class="send-button">Send</button>
         </div>
     </div>
     <script>
         const chatContainer = document.getElementById('chat-container');
         const messageInput = document.getElementById('message-input');
         const sendButton = document.getElementById('send-button');
-        const deepSeekAIKey = 'Vsk-858bd734549e4965a5d7493d227c2464'; 
-        let conversationHistory = [
-            {
-                role: "system",
-                content: `Sei un chatbot di assistenza clienti per un'agenzia di social media marketing. Rispondi alle domande dei clienti sui pacchetti offerti.
-                Ecco le informazioni sui pacchetti:
-                ALLEGATO A – STARTER PACKAGE (€600/Mese)
-                Ideale per: Piccole imprese e startup che vogliono creare o rafforzare la loro presenza online con un budget contenuto.
-                Piattaforme Incluse: Instagram, Facebook
-                Cosa include:
-                Creazione di contenuti: 8-10 post/mese (immagini, caroselli, brevi video).
-                Design e copywriting di base per una comunicazione chiara e coinvolgente.
-                Pubblicazione di 3 post a settimana con ricerca hashtag ottimizzata.
-                Interazione con la community (risposte a commenti e DM).
-                Report mensile con analisi delle performance.
-                Gestione delle ADS con un budget pubblicitario incluso di €200.
-                Benefici per il tuo brand: Maggiore visibilità e riconoscibilità. Comunicazione professionale e coerente. Incremento dell'engagement e fidelizzazione dei clienti. Analisi e strategia di miglioramento continuo.
-                ---
-                ALLEGATO B – GROWTH PACKAGE (€1.500/Mese)
-                Ideale per: Aziende in crescita che vogliono aumentare la visibilità e interazione con il pubblico.
-                Piattaforme Incluse: Instagram, Facebook, TikTok
-                Cosa include:
-                15-20 post/mese (mix di immagini, caroselli, video, Reels).
-                Visual e copywriting professionale per una comunicazione efficace e in linea con il brand.
-                Pubblicazione 5 volte a settimana con strategia avanzata di hashtag.
-                Gestione della community giornaliera per interagire con follower e aumentare la fiducia.
-                Report bisettimanale con analisi e suggerimenti.
-                Gestione di 1 campagna ADV (budget pubblicitario escluso).
-                1 call strategica al mese per ottimizzare la strategia social.
-                Benefici per il tuo brand: Aumento significativo della visibilità e coinvolgimento. Contenuti professionali per un’immagine più autorevole. Crescita della community e miglioramento delle interazioni. Ottimizzazione della strategia per risultati concreti.
-                ---
-                ALLEGATO C – PREMIUM PACKAGE (€3.000/Mese)
-                Ideale per: Brand affermati che vogliono massimizzare le conversioni e il coinvolgimento con un advanced strategy.
-                Piattaforme Incluse: Instagram, Facebook, TikTok, LinkedIn, Pinterest
-                Cosa include:
-                25-30 post/mese (video, caroselli, UGC, advanced graphics).
-                Advanced copywriting and professional video editing.
-                Influencer marketing: 1 collaboration with an influencer per month.
-                Daily publication with content optimized for trends and algorithms.
-                24/7 community management to respond in real-time to followers and customers.
-                Weekly report with performance analysis and competitor analysis.
-                ADV management on 2 platforms with A/B testing and advanced optimization.
-                2 strategic calls per month + dedicated manager for continuous support.
-                Benefits for your brand: High-level strategy to maximize conversions and sales. Expansion on multiple platforms with targeted content. Constant interaction for an active and loyal community. Detailed control of results and real-time strategies.
-                `
+        
+        let isLoading = false;
+        const STORAGE_KEY = 'chatbot_conversation';
+
+        // Package information for local responses
+        const packages = {
+            "STARTER": {
+                price: "€600/month",
+                platforms: ["Instagram", "Facebook"],
+                includes: [
+                    "8-10 posts/month (images, carousels, short videos)",
+                    "Basic design and copywriting",
+                    "3 posts per week with optimized hashtags",
+                    "Community interaction (comments and DM responses)",
+                    "Monthly performance reports",
+                    "€200 included ad budget"
+                ],
+                bestFor: "Small businesses and startups"
+            },
+            "GROWTH": {
+                price: "€1,500/month",
+                platforms: ["Instagram", "Facebook", "TikTok"],
+                includes: [
+                    "15-20 posts/month (mix of images, carousels, videos, Reels)",
+                    "Professional design and copywriting",
+                    "5 posts per week",
+                    "Daily community management",
+                    "Biweekly reports with analysis",
+                    "Management of 1 ad campaign (budget not included)"
+                ],
+                bestFor: "Growing businesses wanting more visibility"
+            },
+            "PREMIUM": {
+                price: "€3,000/month",
+                platforms: ["Instagram", "Facebook", "TikTok", "LinkedIn", "Pinterest"],
+                includes: [
+                    "25-30 posts/month (videos, carousels, advanced graphics)",
+                    "Advanced copywriting and video editing",
+                    "Daily optimized content",
+                    "24/7 community management",
+                    "Weekly performance reports",
+                    "Management of 2 ad campaigns with A/B testing",
+                    "1 influencer collaboration per month"
+                ],
+                bestFor: "Established brands wanting maximum conversions"
             }
-        ];
+        };
+
+        // Local response generator
+        function generateLocalResponse(message) {
+            const lowerMessage = message.toLowerCase();
+            
+            if (lowerMessage.includes("starter")) {
+                return generatePackageResponse("STARTER");
+            } 
+            else if (lowerMessage.includes("growth")) {
+                return generatePackageResponse("GROWTH");
+            }
+            else if (lowerMessage.includes("premium")) {
+                return generatePackageResponse("PREMIUM");
+            }
+            else if (lowerMessage.includes("price") || lowerMessage.includes("cost") || lowerMessage.includes("how much")) {
+                return `Our packages are priced as follows:\n
+                - Starter Package: ${packages.STARTER.price}\n
+                - Growth Package: ${packages.GROWTH.price}\n
+                - Premium Package: ${packages.PREMIUM.price}`;
+            }
+            else if (lowerMessage.includes("small business") || lowerMessage.includes("startup")) {
+                return `For small businesses, I recommend our STARTER PACKAGE (${packages.STARTER.price}). It includes:\n
+                ${packages.STARTER.includes.slice(0, 3).join('\n• ')}\n\n
+                This package is designed specifically for ${packages.STARTER.bestFor}.`;
+            }
+            else if (lowerMessage.includes("best") || lowerMessage.includes("recommend")) {
+                return `The best package depends on your needs:\n
+                - For basic presence: Starter (${packages.STARTER.price})\n
+                - For growing visibility: Growth (${packages.GROWTH.price})\n
+                - For maximum impact: Premium (${packages.PREMIUM.price})\n\n
+                Could you tell me more about your business needs?`;
+            }
+            else {
+                return "I can provide information about our social media marketing packages. Please ask about our Starter, Growth, or Premium packages.";
+            }
+        }
+
+        function generatePackageResponse(packageName) {
+            const pkg = packages[packageName];
+            return `Our ${packageName} PACKAGE (${pkg.price}) includes:\n
+            • Platforms: ${pkg.platforms.join(', ')}\n
+            • ${pkg.includes.join('\n• ')}\n\n
+            Best for: ${pkg.bestFor}`;
+        }
+
         function addMessage(message, sender) {
             const messageDiv = document.createElement('div');
             messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
-            messageDiv.textContent = message;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            
+            messageDiv.innerHTML = `
+                <div class="message-content">${message.replace(/\n/g, '<br>')}</div>
+                <div class="timestamp text-xs mt-1 ${sender === 'user' ? 'text-teal-600' : 'text-purple-600'}">
+                    ${sender === 'user' ? 'You' : 'Assistant'} • ${timeString}
+                </div>
+            `;
+            
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
-        async function getOpenAIResponse(message) {
+
+        function addQuickReplies() {
+            const quickReplies = [
+                "Tell me about the Starter Package",
+                "What's included in Growth Package?",
+                "How much is Premium Package?",
+                "Which package is best for small business?"
+            ];
+            
+            const container = document.createElement('div');
+            container.className = 'quick-replies-container mt-2';
+            
+            quickReplies.forEach(reply => {
+                const button = document.createElement('div');
+                button.className = 'quick-reply';
+                button.textContent = reply;
+                button.onclick = () => {
+                    messageInput.value = reply;
+                    sendButton.click();
+                };
+                container.appendChild(button);
+            });
+            
+            chatContainer.appendChild(container);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        async function getAIResponse(message) {
+            if (isLoading) return;
+            isLoading = true;
+            sendButton.disabled = true;
+            showTypingIndicator();
+            
             try {
-                conversationHistory.push({ role: "user", content: message });
-                const response = await fetch('https://api.deepseek.com/v1/chat/completions', { 
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${deepSeekAIKey}` 
-                    },
-                    body: JSON.stringify({
-                        model: "deepseek-chat",
-                        messages: conversationHistory
-                    })
-                });
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(`DeepSeek API error: ${response.status} - ${response.statusText} - ${errorData.error.message}`);
-                }
-                const data = await response.json();
-                const reply = data.choices[0].message.content;
-                conversationHistory.push({ role: "assistant", content: reply });
-                return reply;
+                // Simulate API delay
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                const response = generateLocalResponse(message);
+                addMessage(response, 'bot');
+                
+                return response;
             } catch (error) {
-                console.error('Error fetching DeepSeek response:', error);
-                addMessage("Sorry, I couldn't process your request. Please try again later.", 'bot');
-                return "Sorry, I couldn't process your request. Please try again later.";
+                console.error('Error:', error);
+                return "I'm having trouble processing your request. Please try again.";
+            } finally {
+                isLoading = false;
+                sendButton.disabled = false;
+                hideTypingIndicator();
+                addQuickReplies();
             }
         }
+
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.classList.add('typing-indicator');
+            typingDiv.id = 'typing-indicator';
+            typingDiv.innerHTML = `
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            `;
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const typingIndicator = document.getElementById('typing-indicator');
+            if (typingIndicator) {
+                typingIndicator.remove();
+            }
+        }
+
+        // Event listeners
         sendButton.addEventListener('click', async () => {
             const messageText = messageInput.value.trim();
-            if (messageText === '') return;
+            if (messageText === '' || isLoading) return;
+            
             addMessage(messageText, 'user');
             messageInput.value = '';
-            const botResponse = await getOpenAIResponse(messageText);
-            addMessage(botResponse, 'bot');
+            messageInput.style.height = 'auto';
+            messageInput.focus();
+            
+            await getAIResponse(messageText);
         });
+
         messageInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
                 sendButton.click();
             }
+        });
+
+        messageInput.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+
+        // Initial welcome message
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                addMessage("Hello! I'm your social media marketing assistant. I can tell you about our Starter, Growth, and Premium packages. What would you like to know?", 'bot');
+                addQuickReplies();
+            }, 500);
         });
     </script>
 </body>
